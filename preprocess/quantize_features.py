@@ -130,7 +130,7 @@ def parse_args():
     parser.add_argument('--dataset', type=str, default=None)
     parser.add_argument('--output_codebook_dir', type=str, default=None)
     parser.add_argument('--base_codebook_path', type=str, default="")
-    parser.add_argument('--feat_type', type=str, default='dino')
+    parser.add_argument('--feat_type', type=str, default='clip')
     parser.add_argument('--dino_weight', type=float, default=0.1)
     parser.add_argument('--load_balance_weight', type=float, default=1.0)
     parser.add_argument('--n_e', type=int, default=128)

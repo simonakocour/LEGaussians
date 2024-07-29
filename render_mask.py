@@ -127,6 +127,22 @@ def rendering_mask(dataset, opt, pipe, checkpoint, codebook_pth, test_set, texts
         torch.cuda.empty_cache()
     
 
+def read_list_from_txt(file_str):
+    if type(file_str)==str:
+        if file_str.endswith('.txt'):
+            with open(file_str, 'r') as file:
+                file_contents = file.read()
+            # Use eval to parse the string representation of the list
+            file_list = eval(file_contents)
+        else:
+            raise  ValueError('Wrong definition of test set path. It has to be a txt file.')
+    elif type(file_str)==list:
+        file_list = file_str.copy()
+    else:
+        raise ValueError('Wrong definition of test set. Use a .txt file or a JSON string list')
+    return file_list
+
+
 if __name__ == "__main__":
     # Set up command line argument parser
     parser = configargparse.ArgParser(description="Training script parameters")
@@ -139,19 +155,24 @@ if __name__ == "__main__":
     parser.add_argument("--mode", type=str, default="search", choices=["search"])
     parser.add_argument("--start_checkpoint", type=str, default = None)
     parser.add_argument("--codebook", type=str, default = None)
-    parser.add_argument("--test_set", nargs="+", type=str, default=[])
+    parser.add_argument("--test_set", nargs="+", type=str, default=None)
     parser.add_argument("--texts", nargs="+", type=str, default=[])
     parser.add_argument("--alpha", type=float, default=0.5)
     parser.add_argument("--scale", type=float, default=100)
     parser.add_argument("--com_type", type=str, default="")
     args = parser.parse_args(sys.argv[1:])
     
+    args.test_set = read_list_from_txt(args.test_set)
+
     print("Optimizing " + args.model_path)
 
     # Initialize system state (RNG)
     safe_state(False)
 
     torch.autograd.set_detect_anomaly(args.detect_anomaly)
+    if args.test_set:
+        args.test_set = read_list_from_txt(args.test_set)
+        print("Check the test_set type: ", type(args.test_set)) 
     
     texts_dict = {}
     for i in range(len(args.texts)):

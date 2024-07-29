@@ -96,4 +96,6 @@ def render(viewpoint_camera, pc : GaussianModel,
             "uncertainty": rendered_image[-1:, :, :],
             "viewspace_points": screenspace_points,
             "visibility_filter" : radii > 0,
-            "radii": radii}
+            "radii": radii,
+            # "depth": depth
+    }

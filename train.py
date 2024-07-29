@@ -1,6 +1,8 @@
 import os
+import time
 import torch
 import yaml
+import ast
 from random import randint
 import torch.nn.functional as F
 from utils.loss_utils import l1_loss, ssim
@@ -23,6 +25,7 @@ except ImportError:
     TENSORBOARD_FOUND = False
 
 FIRST_REPORT = True
+TIMESTR = time.strftime("%Y%m%d-%H%M%S")
 
 def compute_semantic_loss(language_feature_indices, gt_language_feature_indices, uncertainty, ce):
     # Lem Loss
@@ -117,12 +120,10 @@ def training(dataset, opt, pipe,
         image, viewspace_point_tensor, visibility_filter, radii = render_pkg["render"], render_pkg["viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
         semantic_features = render_pkg["semantic_features"]
         uncertainty = render_pkg["uncertainty"]
-        
         # Index Features Regularization Loss
         xyzs = gaussians.get_xyz.detach()
         gs_semantic_features = gaussians.get_semantic_features
         gs_uncertainty = gaussians.get_uncertainty
-        
         if iteration % 10 == 0:
             xyz_mlp_loss, smooth_loss = compute_mlp_smooth_loss(xyzs, xyz_embedding, xyz_decoder, gs_semantic_features, gs_uncertainty.squeeze().detach(), 
                                                   dataset.smooth_loss_uncertainty_min)
@@ -172,6 +173,7 @@ def training(dataset, opt, pipe,
                 print("\n[ITER {}] Saving Gaussians".format(iteration))
                 index_decoder.eval()
                 scene.save(iteration, index_decoder, color_map)
+               # scene.save(iteration)
                 index_decoder.train()
 
             # Densification
@@ -206,8 +208,7 @@ def prepare_output_and_logger(dataset, opt, pipe):
         if os.getenv('OAR_JOB_ID'):
             unique_str=os.getenv('OAR_JOB_ID')
         else:
-            unique_str = str(uuid.uuid4())
-        dataset.model_path = os.path.join("./output/", unique_str[0:10])
+            dataset.model_path = os.path.join("./output/", unique_str[0:10])
         
     # Set up output folder
     print("Output folder: {}".format(dataset.model_path))
@@ -335,6 +336,23 @@ def training_report(tb_writer, iteration, is_novel_view,
         if FIRST_REPORT:
             FIRST_REPORT = False
 
+
+def read_list_from_txt(file_str):
+    if type(file_str)==str: 
+        if file_str.endswith('.txt'):
+            with open(file_str, 'r') as file:
+                file_contents = file.read()
+            # Use eval to parse the string representation of the list
+            file_list = eval(file_contents)
+        else:
+            raise  ValueError('Wrong definition of test set path. It has to be a txt file.')
+    elif type(file_str)==list:
+        file_list = file_str.copy()
+    else:
+        raise ValueError('Wrong definition of test set. Use a .txt file or a JSON string list')
+    return file_list
+
+
 if __name__ == "__main__":
     # Set up command line argument parser
     parser = configargparse.ArgParser(description="Training script parameters")
@@ -346,13 +364,17 @@ if __name__ == "__main__":
     parser.add('--debug_from', type=int, default=-1)
     parser.add('--detect_anomaly', action='store_true', default=False)
     parser.add("--test_iterations", nargs="+", type=int, default=[0]+[i for i in range(0, 30_001, 10_000)])
-    parser.add("--test_set", nargs="+", type=str, default=[])
+    parser.add("--test_set", nargs="+", type=str, default=None)
     parser.add("--save_iterations", nargs="+", type=int, default=[i for i in range(0, 30_001, 10_000)])
     parser.add("--quiet", action="store_true")
     parser.add("--checkpoint_iterations", nargs="+", type=int, default=[i for i in range(0, 30_001, 10_000)])
     parser.add("--start_checkpoint", type=str, default = None)
     args = parser.parse_args(sys.argv[1:])
     args.save_iterations.append(args.iterations)
+    
+    if args.test_set:
+        args.test_set = read_list_from_txt(args.test_set)
+        print("Check the test_set type: ", type(args.test_set))
     
     print("Optimizing " + args.model_path)
 

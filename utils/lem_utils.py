@@ -127,7 +127,6 @@ class CLIPRelevance:
         # output = torch.matmul(embed, p.T)  # hw x phrases
         # output = F.cosine_similarity(embed[..., None, :], p[None, None, ...], dim=-1)  # hw x phrases
         output = self._cosine_sim(embed, p)
-        
         positive_vals = output[..., :1]  # hw x 1
         negative_vals = output[..., 1:]  # hw x N_phrase
         repeated_pos = positive_vals.repeat(1, 1, len(self.negatives))  # hw x N_phrase
